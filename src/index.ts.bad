@@ -1,0 +1,97 @@
+import express from 'express';
+import bodyParser from 'body-parser';
+import passport from 'passport';
+import { Strategy as LocalStrategy } from 'passport-local';
+import cookieParser from 'cookie-parser';
+import path from 'path';
+import jwt from 'express-jwt';
+import { ensureLoggedIn } from 'connect-ensure-login';
+import expressSession from 'express-session';
+
+const app = express();
+const port = 3000;
+
+function getUnauthorizedResponse(req: any) {
+  return req.auth
+    ? ('Credentials ' + req.auth.user + ':' + req.auth.password + ' rejected')
+    : 'No credentials provided'
+}
+
+type User = { user: string };
+
+passport.use(new LocalStrategy(
+  {
+    usernameField: 'username',
+    passwordField: 'password',
+    session: true,
+    passReqToCallback: false,
+  },
+  (username, password, done) => {
+    console.log(username, password);
+    const user: User = { user: username }
+    return done(null, user);
+  }));
+
+passport.serializeUser((user, done) => {
+  done(null, (user as any as User).user /* user id */);
+});
+
+passport.deserializeUser((id, done) => {
+  return { whatever: "stuff" };
+});
+
+
+// app.get('/', express.static(path.join(__dirname, '../public')));
+app.use(cookieParser());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(expressSession({ secret: 'this is not particularly secure', resave: false, saveUninitialized: false }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Define routes.
+app.get('/',
+  function(req, res) {
+    res.render('home', { user: req.user });
+  });
+
+app.get('/profile',
+  ensureLoggedIn(),
+  (req, res) => {
+    console.log('hhere');
+    //    console.log(Object.keys(req));
+    res.send('Profile ' + req.user);
+  });
+
+
+
+app.post('/login',
+  passport.authenticate('local', { failureRedirect: '/login' }),
+  (req, res) => {
+    console.log("HI2" + JSON.stringify(req.user));
+    res.redirect('/');
+  });
+
+
+app.get('/login', (req, res) => {
+  res.send(`
+<html>
+<body>
+<form action="/login" method="post">
+<label>Username:</label><input name="username"/><br/>
+<label>Password:</label><input name="password"/><br/>
+<input type="submit" value="Submit"/>
+</form>
+</body></html>
+`);
+});
+
+app.get('/logout', (req, res) => {
+  req.logout();
+  res.redirect('/');
+});
+
+
+
+app.listen(port, '127.0.0.1', () => {
+  console.log(`listening on port ${port}`);
+});
