@@ -8,6 +8,12 @@ const tokens: { [k: string]: string } = {
   'jcreed': '$2b$08$bU5nRZ8QY2eAcvRYRt0sI.1BPrT5.wQradm4Krrxz2PfbhKQezCuK',
 };
 
+declare module 'express' {
+  interface Request {
+    user: { username?: string };
+  }
+}
+
 function checkLoggedIn(
   req: express.Request,
   res: express.Response,
