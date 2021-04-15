@@ -3,6 +3,10 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import bcrypt from 'bcrypt';
+import * as ws from 'ws';
+import http from 'http';
+import https from 'https';
+import { parse as parseCookie } from 'cookie';
 
 const tokens: { [k: string]: string } = {
   'jcreed': '$2b$08$bU5nRZ8QY2eAcvRYRt0sI.1BPrT5.wQradm4Krrxz2PfbhKQezCuK',
@@ -14,21 +18,27 @@ declare module 'express-serve-static-core' {
   }
 }
 
+type Cookie = { user?: string, token?: string };
+type ValidCookie = { user: string, token: string };
+
+function isValidCookie(cookie: Cookie): cookie is ValidCookie {
+  const { user, token } = cookie;
+  return (token !== undefined) &&
+    (user !== undefined) &&
+    (tokens[user] !== undefined) &&
+    bcrypt.compareSync(token, tokens[user]);
+}
+
 function checkLoggedIn(
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) {
-  const user = req.cookies.user;
-  const token = req.cookies.token;
-
-  if (!token || !user || !tokens[user] || !bcrypt.compareSync(token, tokens[user])) {
-    next();
+  const cookie: Cookie = req.cookies;
+  if (isValidCookie(cookie)) {
+    req.user = { username: cookie.user };
   }
-  else {
-    req.user = { username: user };
-    next();
-  }
+  next();
 }
 
 function ensureLoggedIn(
@@ -44,7 +54,7 @@ function ensureLoggedIn(
   }
 }
 
-export function init(app: express.Express) {
+export function init(app: express.Express, server: http.Server | https.Server) {
   app.set('views', path.join(__dirname, '../views'));
   app.set('view engine', 'ejs');
 
@@ -82,4 +92,20 @@ export function init(app: express.Express) {
       console.log(req);
       res.render('cookie', { cookie: JSON.stringify(req.cookies) });
     });
+
+  const wss = new ws.Server({ server });
+  wss.on('connection', (ws, req) => {
+
+    const cookie = parseCookie(req.headers.cookie || '') as Cookie;
+    // This is the authentication barrier to arbitrary clients sending ws commands.
+    if (isValidCookie(cookie)) {
+      ws.onmessage = (msg) => {
+        console.log(">", msg.data);
+      };
+    }
+    else {
+      console.log("Unauthorized websocket connection attempt XXX more debugging info here");
+      ws.close();
+    }
+  });
 }
