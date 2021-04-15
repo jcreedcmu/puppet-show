@@ -68,7 +68,12 @@ export function init(
   app.use(cookieParser());
   app.use(bodyParser.urlencoded({ extended: true }));
 
+  (app as any).ws('/foo', (ws: any, req: any) => {
+    console.log('got here foo');
+  });
+
   ews.app.ws('/connect', (ws, req) => {
+    console.log('got here connect');
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;
     // This is the authentication barrier to arbitrary clients sending ws commands.
     if (isValidCookie(cookie)) {
