@@ -54,7 +54,7 @@ function ensureLoggedIn(
   }
 }
 
-export function init(app: express.Express, server: http.Server | https.Server) {
+export function init(app: express.Express, server: http.Server | https.Server, port: number) {
   app.set('views', path.join(__dirname, '../views'));
   app.set('view engine', 'ejs');
 
@@ -93,7 +93,7 @@ export function init(app: express.Express, server: http.Server | https.Server) {
       res.render('cookie', { cookie: JSON.stringify(req.cookies) });
     });
 
-  const wss = new ws.Server({ server });
+  const wss = new ws.Server({ server, port });
   wss.on('connection', (ws, req) => {
 
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;

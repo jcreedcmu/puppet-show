@@ -3,9 +3,10 @@ import express from 'express';
 import http from 'http';
 import { init } from './server';
 
+const port = parseInt(process.env.PORT || '3000');
 const app = express();
-init(app, http.createServer(app));
+init(app, http.createServer(app), port);
 
-app.listen(process.env.PORT, () => {
-  console.log(`listening on port ${process.env.PORT}...`);
+app.listen(port, () => {
+  console.log(`listening on port ${port}...`);
 });
