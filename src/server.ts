@@ -93,7 +93,7 @@ export function init(app: express.Express, server: http.Server | https.Server, p
       res.render('cookie', { cookie: JSON.stringify(req.cookies) });
     });
 
-  const wss = new ws.Server({ server, port });
+  const wss = new ws.Server({ server, port: 8080 });
   wss.on('connection', (ws, req) => {
 
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;
