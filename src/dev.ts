@@ -18,7 +18,7 @@ const server = https.createServer({
   cert: fs.readFileSync('dev.cert')
 }, app);
 
-init(app, server, https_port);
+init(app, server, 'dev');
 
 server.listen(https_port, '127.0.0.1', () => {
   console.log(`listening on port ${https_port}`);

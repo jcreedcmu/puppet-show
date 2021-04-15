@@ -1,5 +1,8 @@
 <% if (!user) { %>
-	<p>Welcome! Please <a href="/make-token">make a token</a>.</p>
+	<p>Welcome! Please <a href="/login">login</a>.</p>
 <% } else { %>
 	<p>Hello, <%= user.username %>. View your <a href="/profile">profile</a>.</p>
+   <p><a href="/logout">Logout</a>
 <% } %>
+<p>
+<%- extra %>

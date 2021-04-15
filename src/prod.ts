@@ -5,7 +5,7 @@ import { init } from './server';
 
 const port = parseInt(process.env.PORT || '3000');
 const app = express();
-init(app, http.createServer(app), port);
+init(app, http.createServer(app), 'prod');
 
 app.listen(port, () => {
   console.log(`listening on port ${port}...`);
