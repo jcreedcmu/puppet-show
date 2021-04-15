@@ -68,12 +68,7 @@ export function init(
   app.use(cookieParser());
   app.use(bodyParser.urlencoded({ extended: true }));
 
-  (app as any).ws('/foo', (ws: any, req: any) => {
-    console.log('got here foo');
-  });
-
   ews.app.ws('/connect', (ws, req) => {
-    console.log('got here connect');
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;
     // This is the authentication barrier to arbitrary clients sending ws commands.
     if (isValidCookie(cookie)) {
@@ -123,15 +118,8 @@ export function init(
       res.render('profile', { user: req.user });
     });
 
-  app.get('/cookie',
-    (req, res) => {
-      console.log(req);
-      res.render('cookie', { cookie: JSON.stringify(req.cookies) });
-    });
-
   app.get('/logout',
     (req, res) => {
-      console.log(req);
       res.cookie('user', '');
       res.cookie('token', '');
       res.redirect('/');
