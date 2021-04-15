@@ -60,7 +60,7 @@ export function init(
   server: http.Server | https.Server,
   env: 'prod' | 'dev'
 ) {
-  const ews = expressWs(app, server);
+  const ews = env == 'dev' ? expressWs(app, server) : expressWs(app);
 
   app.set('views', path.join(__dirname, '../views'));
   app.set('view engine', 'ejs');
