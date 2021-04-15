@@ -1,12 +1,12 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser';
-import path from 'path';
 import bcrypt from 'bcrypt';
-import * as ws from 'ws';
+import bodyParser from 'body-parser';
+import { parse as parseCookie } from 'cookie';
+import cookieParser from 'cookie-parser';
+import express from 'express';
+import expressWs from 'express-ws';
 import http from 'http';
 import https from 'https';
-import { parse as parseCookie } from 'cookie';
+import path from 'path';
 
 const tokens: { [k: string]: string } = {
   'jcreed': '$2b$08$bU5nRZ8QY2eAcvRYRt0sI.1BPrT5.wQradm4Krrxz2PfbhKQezCuK',
@@ -54,7 +54,9 @@ function ensureLoggedIn(
   }
 }
 
-export function init(app: express.Express, server: http.Server | https.Server, port: number) {
+export function init(rawApp: express.Express, server: http.Server | https.Server, port: number) {
+  const { app } = expressWs(rawApp);
+
   app.set('views', path.join(__dirname, '../views'));
   app.set('view engine', 'ejs');
 
@@ -93,9 +95,7 @@ export function init(app: express.Express, server: http.Server | https.Server, p
       res.render('cookie', { cookie: JSON.stringify(req.cookies) });
     });
 
-  const wss = new ws.Server({ server, port: 8080 });
-  wss.on('connection', (ws, req) => {
-
+  app.ws('/connect', (ws, req) => {
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;
     // This is the authentication barrier to arbitrary clients sending ws commands.
     if (isValidCookie(cookie)) {
