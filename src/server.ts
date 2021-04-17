@@ -10,6 +10,8 @@ import path from 'path';
 
 const tokens: { [k: string]: string } = {
   'jcreed': '$2b$08$bU5nRZ8QY2eAcvRYRt0sI.1BPrT5.wQradm4Krrxz2PfbhKQezCuK',
+  'cmartens': '$2b$08$9dkR/TPhCF3.iGbqbpjWd.gH00I38oXuC.D3AIc0XN1EASR729nzu',
+  'wlovas': '$2b$08$MOa0G8kHpgd9x6J2NjMUh.RhKMMFaluZNhpG9fk9vTqqYCmfp.U5O',
 };
 
 declare module 'express-serve-static-core' {
