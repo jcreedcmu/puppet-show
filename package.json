@@ -8,7 +8,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "postinstall": "esbuild src/*.ts --outdir=out",
+    "postinstall": "node ./build.js",
     "start": "node out/prod.js"
   },
   "keywords": [],
