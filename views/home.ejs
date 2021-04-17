@@ -1,3 +1,6 @@
+<script src="/js/env.js"></script>
+<script src="/js/bundle.js"></script>
+
 <% if (!user) { %>
 	<p>Welcome! Please <a href="/login">login</a>.</p>
 <% } else { %>
@@ -5,4 +8,4 @@
    <p><a href="/logout">Logout</a>
 <% } %>
 <p>
-<%- extra %>
+<button onclick="sendMsg()">send</button>

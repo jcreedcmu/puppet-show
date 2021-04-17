@@ -84,14 +84,7 @@ export function init(
     }
   });
 
-  app.get('/',
-    checkLoggedIn,
-    (req, res) => {
-      const host = env == 'dev' ? 'localhost:3443' : 'mammoth-chiller.glitch.me';
-      const js = `w = new WebSocket("wss://${host}/connect"); w.onopen = () => { w.send("hi") }`;
-      const extra = `<button onclick="${js.replace(/"/g, '&quot;')}">send</button>`;
-      res.render('home', { user: req.user, extra });
-    });
+
 
   app.get('/login',
     (req, res) => {
@@ -126,6 +119,22 @@ export function init(
       res.cookie('token', '');
       res.redirect('/');
     });
+
+
+  app.get('/home',
+    checkLoggedIn,
+    (req, res) => {
+      res.render('home', { user: req.user, extra: '' });
+    });
+
+  app.get('/js/env.js', (req, res) => {
+    if (env == 'dev')
+      res.send('const env = "dev"');
+    else
+      res.send('const env = "prod"');
+  });
+
+  app.use('/', express.static(path.join(__dirname, '../public')));
 
 
 }

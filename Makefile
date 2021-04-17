@@ -1,9 +1,10 @@
 watch:
-	npx tsc -w
+	node client-build.js watch
 
 dev:
+	node server-build.js
 	node out/dev.js
 
-prod:
-	npx tsc
-	node out/prod.js
+build:
+	node client-build.js
+	node server-build.js
