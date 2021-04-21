@@ -7,6 +7,7 @@ import expressWs from 'express-ws';
 import http from 'http';
 import https from 'https';
 import path from 'path';
+import * as WebSocket from 'ws';
 
 const tokens: { [k: string]: string } = {
   'jcreed': '$2b$08$bU5nRZ8QY2eAcvRYRt0sI.1BPrT5.wQradm4Krrxz2PfbhKQezCuK',
@@ -57,6 +58,16 @@ function ensureLoggedIn(
   }
 }
 
+let idCounter = 0;
+type Conn = { user: string, ws: WebSocket };
+const connections: { [id: string]: Conn } = {}
+
+function broadcast(msg: string) {
+  Object.values(connections).forEach(conn => {
+    conn.ws.send(msg);
+  });
+}
+
 export function init(
   app: express.Express,
   server: http.Server | https.Server,
@@ -74,9 +85,14 @@ export function init(
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;
     // This is the authentication barrier to arbitrary clients sending ws commands.
     if (isValidCookie(cookie)) {
+      const id = idCounter++;
+      connections[id] = { user: cookie.user, ws };
       ws.addEventListener('message', (msg) => {
         console.log(">", msg.data);
-        ws.send(msg.data);
+        broadcast(msg.data);
+      });
+      ws.addEventListener('close', () => {
+        delete connections[id];
       });
     }
     else {
