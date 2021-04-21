@@ -1,5 +1,6 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
+import update from 'immutability-helper';
 
 type Point = { x: number, y: number };
 type Actor = { p: Point, msg: string, color: string };
@@ -50,12 +51,12 @@ export const App = () => {
     fontSize: 24,
     fontFamily: 'courier new',
   };
-  const state: State = {
+  const [state, setState] = useState<State>({
     actors: [
       { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
       { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
     ]
-  }
+  });
   const { canvasRef } = useCanvas(state);
 
   const div1 =
@@ -74,12 +75,29 @@ export const App = () => {
     }
     setCursor(false);
   };
+
+  function doClick(actorIx: number) {
+    setState(update(state, { actors: { [actorIx]: { msg: { $set: input } } } }));
+  }
+
+  const onClick: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
+    const p = relpos(e);
+    for (const [ix, actor] of state.actors.entries()) {
+      if (hitTest(actor, p)) {
+        doClick(ix);
+        return;
+      }
+    }
+    setCursor(false);
+  };
+
   const canvasProps = {
     style: { cursor: cursor ? 'pointer' : undefined, border: '1px solid black' },
     width: WIDTH,
     height: HEIGHT,
     ref: canvasRef,
-    onMouseMove
+    onMouseMove,
+    onClick,
   };
   return <span><canvas {...canvasProps} /><br /><br />{div1}</span>;
 }
