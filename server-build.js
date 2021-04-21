@@ -6,6 +6,7 @@ async function go() {
 
   await build({
 	 entryPoints: ['./src/dev.ts', './src/prod.ts', './src/server.ts'],
+	 sourcemap: true,
 	 bundle: false,
 	 outdir: './out',
 	 format: 'cjs',

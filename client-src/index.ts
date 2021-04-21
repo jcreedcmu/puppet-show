@@ -1,3 +1,5 @@
+
+import { run } from './app';
 declare const env: 'dev' | 'prod';
 
 function openWsTo(host: string): Promise<WebSocket> {
@@ -27,3 +29,6 @@ async function sendMsg() {
 if ((env as string) == 'never') {
   sendMsg();
 }
+
+console.log('hi');
+run();
