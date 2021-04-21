@@ -31,4 +31,8 @@ if ((env as string) == 'never') {
 }
 
 console.log('hi');
-run();
+async function go() {
+  const ws = await state.ws;
+  run(ws);
+}
+go();

@@ -41,9 +41,38 @@ function hitTest(actor: Actor, p: Point) {
     p.y < actor.p.y + 20 && p.y > actor.p.y - 20);
 }
 
-export const App = () => {
+type wsMsg = {
+  actorIx: number,
+  msg: string,
+}
+
+function sendWsMsg(ws: WebSocket, msg: wsMsg): void {
+  ws.send(JSON.stringify(msg));
+}
+
+function useWsListener(ws: WebSocket, handler: (msg: wsMsg) => void) {
+  const h = (e: MessageEvent) => {
+    handler(JSON.parse(e.data) as wsMsg);
+  };
+  useEffect(() => {
+    ws.addEventListener('message', h);
+    return () => ws.removeEventListener('message', h);
+  });
+}
+
+export const App = (props: { ws: WebSocket }) => {
+  const { ws } = props;
   const [input, setInput] = useState<string>('...');
   const [cursor, setCursor] = useState<boolean>(false);
+  const [state, setState] = useState<State>({
+    actors: [
+      { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
+      { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
+    ]
+  });
+
+  useWsListener(ws, reduceMsg);
+
   const style: JSX.CSSProperties = {
     border: 'none',
     background: '#def',
@@ -51,12 +80,6 @@ export const App = () => {
     fontSize: 24,
     fontFamily: 'courier new',
   };
-  const [state, setState] = useState<State>({
-    actors: [
-      { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
-      { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
-    ]
-  });
   const { canvasRef } = useCanvas(state);
 
   const div1 =
@@ -76,9 +99,19 @@ export const App = () => {
     setCursor(false);
   };
 
-  function doClick(actorIx: number) {
-    setState(update(state, { actors: { [actorIx]: { msg: { $set: input } } } }));
+  function reduceMsg(wm: wsMsg) {
+    setState(update(state, { actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } }));
   }
+
+  function doClick(actorIx: number) {
+    const wm: wsMsg = { actorIx, msg: input };
+    // reduceMsg(wm);
+    sendWsMsg(ws, wm);
+  }
+
+  const onMouseDown: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
+    e.preventDefault();
+  };
 
   const onClick: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
     const p = relpos(e);
@@ -96,12 +129,13 @@ export const App = () => {
     width: WIDTH,
     height: HEIGHT,
     ref: canvasRef,
+    onMouseDown,
     onMouseMove,
     onClick,
   };
   return <span><canvas {...canvasProps} /><br /><br />{div1}</span>;
 }
 
-export function run() {
-  render(<App />, document.getElementById('root')!);
+export function run(ws: WebSocket) {
+  render(<App ws={ws} />, document.getElementById('root')!);
 }

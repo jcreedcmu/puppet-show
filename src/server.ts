@@ -74,17 +74,16 @@ export function init(
     const cookie = parseCookie(req.headers.cookie || '') as Cookie;
     // This is the authentication barrier to arbitrary clients sending ws commands.
     if (isValidCookie(cookie)) {
-      ws.onmessage = (msg) => {
+      ws.addEventListener('message', (msg) => {
         console.log(">", msg.data);
-      };
+        ws.send(msg.data);
+      });
     }
     else {
       console.log("Unauthorized websocket connection attempt XXX more debugging info here");
       ws.close();
     }
   });
-
-
 
   app.get('/login',
     (req, res) => {
