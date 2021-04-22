@@ -1,6 +1,7 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { State, Point, Actor, initState, updater, tools, getActiveTool, TOOL_SIZE, initToolState } from './state';
+import { State, Point, Actor, initState, tools, getActiveTool, TOOL_SIZE, initToolState } from './state';
+import { updater } from './updater';
 
 const WIDTH = 640;
 const HEIGHT = 480;
