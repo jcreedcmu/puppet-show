@@ -53,7 +53,7 @@ async function go() {
   const ws = await state.ws;
   //// Ugh if there's too long a delay here we may miss the initial message.
   //// To reproduce reliably, uncomment:
-  await delay(50);
+  // await delay(50);
   const { s } = JSON.parse(await getOneMessage(ws)) as InitMsg;
   run(ws, s);
 }
