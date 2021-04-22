@@ -91,7 +91,6 @@ export function init(
       const id = idCounter++;
       connections[id] = { user: cookie.user, ws };
       const im: InitMsg = { t: 'initState', s: state.s };
-      console.log(JSON.stringify(im));
       ws.send(JSON.stringify(im));
       ws.addEventListener('message', (msg) => {
         console.log(">", msg.data);

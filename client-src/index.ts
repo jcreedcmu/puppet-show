@@ -7,6 +7,7 @@ function openWsTo(host: string): Promise<WebSocket> {
   return new Promise((res, rej) => {
     const w = new WebSocket(`wss://${host}/connect`);
     w.onopen = () => { res(w); };
+    w.onmessage = (e) => { console.log(e.data) /* debugging for "Ugh" below */ };
   });
 }
 
@@ -42,9 +43,17 @@ function getOneMessage(ws: WebSocket): Promise<string> {
   });
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((res, rej) => {
+    setTimeout(() => res(), ms);
+  });
+}
 async function go() {
   document.fonts.add(await (new FontFace('CanvasFont', 'url(/fonts/Nitz.ttf)')).load());
   const ws = await state.ws;
+  //// Ugh if there's too long a delay here we may miss the initial message.
+  //// To reproduce reliably, uncomment:
+  await delay(50);
   const { s } = JSON.parse(await getOneMessage(ws)) as InitMsg;
   run(ws, s);
 }
