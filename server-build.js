@@ -5,7 +5,7 @@ const args = process.argv.slice(2);
 async function go() {
 
   await build({
-	 entryPoints: ['./src/dev.ts', './src/prod.ts', './src/server.ts'],
+	 entryPoints: ['./src/dev.ts', './src/prod.ts', './src/server.ts', './src/state.ts'],
 	 sourcemap: true,
 	 bundle: false,
 	 outdir: './out',

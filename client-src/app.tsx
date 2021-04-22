@@ -1,6 +1,6 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { State, Point, Actor, initState, tools, getActiveTool, TOOL_SIZE, initToolState } from './state';
+import { State, changeMsg, reduceMsg, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg } from '../src/state';
 import { updater } from './updater';
 
 const WIDTH = 640;
@@ -64,17 +64,14 @@ function hitTest(actor: Actor, p: Point) {
     p.y < actor.p.y + 20 && p.y > actor.p.y - 20);
 }
 
-type wsMsg =
-  | { t: 'setSpeech', actorIx: number, msg: string }
-  | { t: 'setPos', actorIx: number, p: Point };
 
-function sendWsMsg(ws: WebSocket, msg: wsMsg): void {
+function sendWsMsg(ws: WebSocket, msg: changeMsg): void {
   ws.send(JSON.stringify(msg));
 }
 
-function useWsListener(ws: WebSocket, handler: (msg: wsMsg) => void) {
+function useWsListener(ws: WebSocket, handler: (msg: changeMsg) => void) {
   const h = (e: MessageEvent) => {
-    handler(JSON.parse(e.data) as wsMsg);
+    handler(JSON.parse(e.data) as changeMsg);
   };
   useEffect(() => {
     ws.addEventListener('message', h);
@@ -82,16 +79,17 @@ function useWsListener(ws: WebSocket, handler: (msg: wsMsg) => void) {
   });
 }
 
-
-export const App = (props: { ws: WebSocket }) => {
-  const { ws } = props;
+export const App = (props: { ws: WebSocket, initState: State }) => {
+  const { ws, initState } = props;
   const [input, setInput] = useState<string>('...');
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, setState] = useState<State>(initState);
 
   const upd = updater(setState);
 
-  useWsListener(ws, reduceMsg);
+  useWsListener(ws, msg => {
+    setState(s => reduceMsg(msg, s));
+  });
 
   const style: JSX.CSSProperties = {
     background: '#def',
@@ -128,22 +126,14 @@ export const App = (props: { ws: WebSocket }) => {
     }
   };
 
-  function reduceMsg(wm: wsMsg): void {
-    switch (wm.t) {
-      case 'setSpeech':
-        return upd({ actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } });
-      case 'setPos':
-        return upd({ actors: { [wm.actorIx]: { p: { $set: wm.p } } } });
-    }
-  }
 
   function changeSpeech(actorIx: number) {
-    const wm: wsMsg = { t: 'setSpeech', actorIx, msg: input };
+    const wm: changeMsg = { t: 'setSpeech', actorIx, msg: input };
     sendWsMsg(ws, wm);
   }
 
   function changePos(actorIx: number, p: Point) {
-    const wm: wsMsg = { t: 'setPos', actorIx, p };
+    const wm: changeMsg = { t: 'setPos', actorIx, p };
     sendWsMsg(ws, wm);
   }
 
@@ -246,6 +236,6 @@ export const App = (props: { ws: WebSocket }) => {
     <tr><td>{div1}</td></tr></table>;
 }
 
-export function run(ws: WebSocket) {
-  render(<App ws={ws} />, document.getElementById('root')!);
+export function run(ws: WebSocket, s: State) {
+  render(<App ws={ws} initState={s} />, document.getElementById('root')!);
 }

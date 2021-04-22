@@ -1,4 +1,5 @@
 
+import { InitMsg } from '../src/state';
 import { run } from './app';
 declare const env: 'dev' | 'prod';
 
@@ -30,10 +31,21 @@ if ((env as string) == 'never') {
   sendMsg();
 }
 
-console.log('hi');
+function getOneMessage(ws: WebSocket): Promise<string> {
+  return new Promise((res, rej) => {
+    function getInitState(e: MessageEvent) {
+      console.log(e.data);
+      ws.removeEventListener('message', getInitState);
+      res(e.data);
+    }
+    ws.addEventListener('message', getInitState);
+  });
+}
+
 async function go() {
   document.fonts.add(await (new FontFace('CanvasFont', 'url(/fonts/Nitz.ttf)')).load());
   const ws = await state.ws;
-  run(ws);
+  const { s } = JSON.parse(await getOneMessage(ws)) as InitMsg;
+  run(ws, s);
 }
 go();

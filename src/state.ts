@@ -1,3 +1,4 @@
+import update from 'immutability-helper';
 
 export type Tool = 'move' | 'speech';
 
@@ -35,5 +36,21 @@ export function initToolState(tool: Tool): ToolState {
   switch (tool) {
     case 'move': return { t: 'move', s: { t: 'up' } };
     case 'speech': return { t: 'speech' };
+  }
+}
+
+export type InitMsg =
+  { t: 'initState', s: State };
+
+export type changeMsg =
+  | { t: 'setSpeech', actorIx: number, msg: string }
+  | { t: 'setPos', actorIx: number, p: Point };
+
+export function reduceMsg(wm: changeMsg, s: State): State {
+  switch (wm.t) {
+    case 'setSpeech':
+      return update(s, { actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } });
+    case 'setPos':
+      return update(s, { actors: { [wm.actorIx]: { p: { $set: wm.p } } } });
   }
 }

@@ -8,6 +8,7 @@ import http from 'http';
 import https from 'https';
 import path from 'path';
 import * as WebSocket from 'ws';
+import { changeMsg, InitMsg, initState, reduceMsg, State } from './state';
 
 const tokens: { [k: string]: string } = {
   'jcreed': '$2b$08$bU5nRZ8QY2eAcvRYRt0sI.1BPrT5.wQradm4Krrxz2PfbhKQezCuK',
@@ -20,6 +21,8 @@ declare module 'express-serve-static-core' {
     user?: { username: string };
   }
 }
+
+const state: { s: State } = { s: initState };
 
 type Cookie = { user?: string, token?: string };
 type ValidCookie = { user: string, token: string };
@@ -87,8 +90,12 @@ export function init(
     if (isValidCookie(cookie)) {
       const id = idCounter++;
       connections[id] = { user: cookie.user, ws };
+      const im: InitMsg = { t: 'initState', s: state.s };
+      console.log(JSON.stringify(im));
+      ws.send(JSON.stringify(im));
       ws.addEventListener('message', (msg) => {
         console.log(">", msg.data);
+        state.s = reduceMsg(JSON.parse(msg.data) as changeMsg, state.s);
         broadcast(msg.data);
       });
       ws.addEventListener('close', () => {
