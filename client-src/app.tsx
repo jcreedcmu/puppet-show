@@ -29,7 +29,7 @@ function bubble(d: CanvasRenderingContext2D, p: Point, msg: string) {
   d.fillRect(p.x + off.x, p.y + off.y, thick * text_width, thick * text_height);
   d.fillStyle = save;
 
-  d.font = "24px Nitz";
+  d.font = "24px CanvasFont";
   d.imageSmoothingEnabled = false;
   d.fillText(msg, p.x + off.x, p.y + off.y + baseline * thick);
 }

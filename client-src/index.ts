@@ -32,6 +32,7 @@ if ((env as string) == 'never') {
 
 console.log('hi');
 async function go() {
+  document.fonts.add(await (new FontFace('CanvasFont', 'url(/fonts/Nitz.ttf)')).load());
   const ws = await state.ws;
   run(ws);
 }
