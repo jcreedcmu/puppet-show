@@ -1,6 +1,7 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import update from 'immutability-helper';
+import { Spec } from 'immutability-helper';
 
 type Tool = 'move' | 'speech';
 
@@ -20,6 +21,14 @@ type Actor = { p: Point, msg: string, color: string };
 type State = {
   toolState: ToolState,
   actors: Actor[],
+};
+
+const initState: State = {
+  toolState: { t: 'move', s: { t: 'up' } },
+  actors: [
+    { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
+    { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
+  ]
 };
 
 function getActiveTool(state: State): Tool {
@@ -91,10 +100,9 @@ function hitTest(actor: Actor, p: Point) {
     p.y < actor.p.y + 20 && p.y > actor.p.y - 20);
 }
 
-type wsMsg = {
-  actorIx: number,
-  msg: string,
-}
+type wsMsg =
+  | { t: 'setSpeech', actorIx: number, msg: string }
+  | { t: 'setPos', actorIx: number, p: Point };
 
 function sendWsMsg(ws: WebSocket, msg: wsMsg): void {
   ws.send(JSON.stringify(msg));
@@ -115,13 +123,11 @@ export const App = (props: { ws: WebSocket }) => {
   const { ws } = props;
   const [input, setInput] = useState<string>('...');
   const [cursor, setCursor] = useState<boolean>(false);
-  const [state, setState] = useState<State>({
-    toolState: { t: 'move', s: { t: 'up' } },
-    actors: [
-      { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
-      { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
-    ]
-  });
+  const [state, setState] = useState<State>(initState);
+
+  function upd(spec: Spec<State>) {
+    setState(s => update(s, spec));
+  }
 
   useWsListener(ws, reduceMsg);
 
@@ -142,7 +148,7 @@ export const App = (props: { ws: WebSocket }) => {
       case 'move':
         switch (state.toolState.s.t) {
           case 'drag':
-            return setState(update(state, { toolState: { s: { pt: { $set: p } } } }));
+            return upd({ toolState: { s: { pt: { $set: p } } } });
           case 'up':
           case 'down':
             break;
@@ -160,13 +166,22 @@ export const App = (props: { ws: WebSocket }) => {
     }
   };
 
-  function reduceMsg(wm: wsMsg) {
-    setState(update(state, { actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } }));
+  function reduceMsg(wm: wsMsg): void {
+    switch (wm.t) {
+      case 'setSpeech':
+        return upd({ actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } });
+      case 'setPos':
+        return upd({ actors: { [wm.actorIx]: { p: { $set: wm.p } } } });
+    }
   }
 
   function changeSpeech(actorIx: number) {
-    const wm: wsMsg = { actorIx, msg: input };
-    // reduceMsg(wm);
+    const wm: wsMsg = { t: 'setSpeech', actorIx, msg: input };
+    sendWsMsg(ws, wm);
+  }
+
+  function changePos(actorIx: number, p: Point) {
+    const wm: wsMsg = { t: 'setPos', actorIx, p };
     sendWsMsg(ws, wm);
   }
 
@@ -188,24 +203,24 @@ export const App = (props: { ws: WebSocket }) => {
         switch (state.toolState.s.t) {
           case 'up':
             if (hitAnd(p, ix => {
-              setState(update(state, {
+              upd({
                 toolState: {
                   s: {
                     $set:
                       { t: 'drag', actorIx: ix, origPt: p, pt: p }
                   }
                 }
-              }))
+              })
             })) {
               return;
             }
             else {
-              return setState(update(state, { toolState: { s: { $set: { t: 'down' } } } }));
+              return upd({ toolState: { s: { $set: { t: 'down' } } } });
             }
           case 'down':
-            return setState(update(state, { toolState: { s: { $set: { t: 'down' } } } })); // XXX
+            return upd({ toolState: { s: { $set: { t: 'down' } } } }); // XXX
           case 'drag':
-            return setState(update(state, { toolState: { s: { $set: { t: 'down' } } } })); // XXX
+            return upd({ toolState: { s: { $set: { t: 'down' } } } }); // XXX
         }
         break;
       case 'speech':
@@ -220,26 +235,17 @@ export const App = (props: { ws: WebSocket }) => {
       case 'move':
         switch (state.toolState.s.t) {
           case 'up':
-            return setState(update(state, { toolState: { s: { $set: { t: 'up' } } } }));
+            return upd({ toolState: { s: { $set: { t: 'up' } } } });
           case 'down':
-            return setState(update(state, { toolState: { s: { $set: { t: 'up' } } } }));
+            return upd({ toolState: { s: { $set: { t: 'up' } } } });
           case 'drag':
             const { actorIx, pt, origPt } = state.toolState.s;
-            const s = update(state, { toolState: { s: { $set: { t: 'up' } } } });
-            const s2 = update(s, {
-              actors: {
-                [actorIx]: {
-                  p: {
-                    $apply: prev => ({
-                      x: prev.x + pt.x - origPt.x,
-                      y: prev.y + pt.y - origPt.y
-                    })
-                  }
-                }
-              }
+            const prev = state.actors[actorIx].p;
+            changePos(actorIx, {
+              x: prev.x + pt.x - origPt.x,
+              y: prev.y + pt.y - origPt.y
             });
-            setState(s2);
-            return;
+            return upd({ toolState: { s: { $set: { t: 'up' } } } });
         }
         break;
       case 'speech':
@@ -262,7 +268,7 @@ export const App = (props: { ws: WebSocket }) => {
     const active = getActiveTool(state) == tool;
     const pos: JSX.CSSProperties = { backgroundPositionX: active ? 0 : TOOL_SIZE.x, backgroundPositionY: TOOL_SIZE.y * ix };
     function onClick() {
-      setState(update(state, { toolState: { $set: initToolState(tool) } }));
+      upd({ toolState: { $set: initToolState(tool) } });
     }
     return <div className="tool" style={pos} onClick={onClick} />
   });
