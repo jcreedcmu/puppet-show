@@ -2,9 +2,17 @@ import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import update from 'immutability-helper';
 
+type Tool = 'move' | 'speech';
+
+const tools: Tool[] = ['move', 'speech'];
+const TOOL_SIZE = { x: 48, y: 48 }; // scaled pixels;
+
 type Point = { x: number, y: number };
 type Actor = { p: Point, msg: string, color: string };
-type State = { actors: Actor[] };
+type State = {
+  activeTool: Tool;
+  actors: Actor[]
+};
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -77,11 +85,13 @@ function useWsListener(ws: WebSocket, handler: (msg: wsMsg) => void) {
   });
 }
 
+
 export const App = (props: { ws: WebSocket }) => {
   const { ws } = props;
   const [input, setInput] = useState<string>('...');
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, setState] = useState<State>({
+    activeTool: 'move',
     actors: [
       { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
       { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
@@ -91,19 +101,13 @@ export const App = (props: { ws: WebSocket }) => {
   useWsListener(ws, reduceMsg);
 
   const style: JSX.CSSProperties = {
-    border: 'none',
     background: '#def',
+    width: '100%',
     outline: 'none',
     fontSize: 24,
     fontFamily: 'courier new',
   };
   const { canvasRef } = useCanvas(state);
-
-  const div1 =
-    <div>
-      <input size={40} spellcheck={false} style={style} value={input} onInput={e =>
-        setInput(e.currentTarget.value)} />
-    </div>;
 
   const onMouseMove: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
     const p = relpos(e);
@@ -150,7 +154,26 @@ export const App = (props: { ws: WebSocket }) => {
     onMouseMove,
     onClick,
   };
-  return <span><canvas {...canvasProps} /><br /><br />{div1}</span>;
+  const canvas = <canvas {...canvasProps} />;
+  const toolDivs = tools.map((tool, ix) => {
+    const active = state.activeTool == tool;
+    const pos: JSX.CSSProperties = { backgroundPositionX: active ? 0 : TOOL_SIZE.x, backgroundPositionY: TOOL_SIZE.y * ix };
+    function onClick() {
+      console.log('whup');
+      setState(update(state, { activeTool: { $set: tool } }));
+    }
+    return <div className="tool" style={pos} onClick={onClick} />
+  });
+
+  const div1 = state.activeTool == 'speech' ?
+    <div>
+      <input spellcheck={false} style={style} value={input} onInput={e =>
+        setInput(e.currentTarget.value)} />
+    </div> : <span />;
+
+  const toolbar = <div>{toolDivs}</div>
+  return <table><tr><td rowSpan={2}>{toolbar}</td><td>{canvas}</td></tr>
+    <tr><td>{div1}</td></tr></table>;
 }
 
 export function run(ws: WebSocket) {

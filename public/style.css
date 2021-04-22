@@ -1,0 +1,18 @@
+
+.tool {
+  width: 48px;
+  height: 48px;
+  background-image: url("/images/tools.png");
+  background-position: 48px 48px;
+  background-size: 96px 96px;
+  image-rendering: pixelated;
+  cursor: pointer;
+}
+
+td {
+  vertical-align: top;
+}
+
+input {
+  border: 1px solid black;
+}
