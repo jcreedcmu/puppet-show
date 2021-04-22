@@ -7,12 +7,31 @@ type Tool = 'move' | 'speech';
 const tools: Tool[] = ['move', 'speech'];
 const TOOL_SIZE = { x: 48, y: 48 }; // scaled pixels;
 
+type MoveState =
+  | { t: 'drag', actorIx: string, pt: Point, origPt: Point }
+  | { t: 'up' }
+  | { t: 'down' };
+
+type ToolState =
+  | { t: 'move', s: MoveState }
+  | { t: 'speech' };
 type Point = { x: number, y: number };
 type Actor = { p: Point, msg: string, color: string };
 type State = {
-  activeTool: Tool;
-  actors: Actor[]
+  toolState: ToolState,
+  actors: Actor[],
 };
+
+function getActiveTool(state: State): Tool {
+  return state.toolState.t;
+}
+
+function initToolState(tool: Tool): ToolState {
+  switch (tool) {
+    case 'move': return { t: 'move', s: { t: 'up' } };
+    case 'speech': return { t: 'speech' };
+  }
+}
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -91,7 +110,7 @@ export const App = (props: { ws: WebSocket }) => {
   const [input, setInput] = useState<string>('...');
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, setState] = useState<State>({
-    activeTool: 'move',
+    toolState: { t: 'move', s: { t: 'up' } },
     actors: [
       { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
       { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
@@ -124,26 +143,60 @@ export const App = (props: { ws: WebSocket }) => {
     setState(update(state, { actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } }));
   }
 
-  function doClick(actorIx: number) {
+  function changeSpeech(actorIx: number) {
     const wm: wsMsg = { actorIx, msg: input };
     // reduceMsg(wm);
     sendWsMsg(ws, wm);
   }
 
-  const onMouseDown: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
-    e.preventDefault();
-  };
-
-  const onClick: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
-    const p = relpos(e);
+  function hitAnd(p: Point, k: (actorIx: number) => void): boolean {
     for (const [ix, actor] of state.actors.entries()) {
       if (hitTest(actor, p)) {
-        doClick(ix);
-        return;
+        k(ix);
+        return true;
       }
     }
-    setCursor(false);
+    return false;
+  }
+
+  const onMouseDown: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
+    e.preventDefault();
+    const p = relpos(e);
+    switch (state.toolState.t) {
+      case 'move':
+        switch (state.toolState.s.t) {
+          case 'up':
+            return setState(update(state, { toolState: { s: { $set: { t: 'down' } } } }));
+          case 'down':
+            return setState(update(state, { toolState: { s: { $set: { t: 'down' } } } }));
+          case 'drag':
+            return setState(update(state, { toolState: { s: { $set: { t: 'down' } } } }));
+        }
+        break;
+      case 'speech':
+        hitAnd(p, ix => changeSpeech(ix));
+    }
   };
+
+  const onMouseUp: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
+    e.preventDefault();
+    const p = relpos(e);
+    switch (state.toolState.t) {
+      case 'move':
+        switch (state.toolState.s.t) {
+          case 'up':
+            return setState(update(state, { toolState: { s: { $set: { t: 'up' } } } }));
+          case 'down':
+            return setState(update(state, { toolState: { s: { $set: { t: 'up' } } } }));
+          case 'drag':
+            return setState(update(state, { toolState: { s: { $set: { t: 'up' } } } }));
+        }
+        break;
+      case 'speech':
+    }
+  };
+
+
 
   const canvasProps = {
     style: { cursor: cursor ? 'pointer' : undefined, border: '1px solid black' },
@@ -151,21 +204,21 @@ export const App = (props: { ws: WebSocket }) => {
     height: HEIGHT,
     ref: canvasRef,
     onMouseDown,
+    onMouseUp,
     onMouseMove,
-    onClick,
   };
   const canvas = <canvas {...canvasProps} />;
   const toolDivs = tools.map((tool, ix) => {
-    const active = state.activeTool == tool;
+    const active = getActiveTool(state) == tool;
     const pos: JSX.CSSProperties = { backgroundPositionX: active ? 0 : TOOL_SIZE.x, backgroundPositionY: TOOL_SIZE.y * ix };
     function onClick() {
       console.log('whup');
-      setState(update(state, { activeTool: { $set: tool } }));
+      setState(update(state, { toolState: { $set: initToolState(tool) } }));
     }
     return <div className="tool" style={pos} onClick={onClick} />
   });
 
-  const div1 = state.activeTool == 'speech' ?
+  const div1 = getActiveTool(state) == 'speech' ?
     <div>
       <input spellcheck={false} style={style} value={input} onInput={e =>
         setInput(e.currentTarget.value)} />
