@@ -17,6 +17,23 @@ function relpos<T extends HTMLElement>(event: JSX.TargetedMouseEvent<T>): Point 
   };
 }
 
+function bubble(d: CanvasRenderingContext2D, p: Point, msg: string) {
+  const off = { x: 5, y: -25 };
+  const thick = 2;
+  const save = d.fillStyle;
+  const text_width = msg.length * 6 + 1;
+  const text_height = 12;
+  const baseline = 9;
+  d.fillRect(p.x + off.x - thick, p.y + off.y - thick, thick * text_width + 2 * thick, thick * text_height + 2 * thick);
+  d.fillStyle = 'white';
+  d.fillRect(p.x + off.x, p.y + off.y, thick * text_width, thick * text_height);
+  d.fillStyle = save;
+
+  d.font = "24px Nitz";
+  d.imageSmoothingEnabled = false;
+  d.fillText(msg, p.x + off.x, p.y + off.y + baseline * thick);
+}
+
 function useCanvas(state: State) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -29,7 +46,7 @@ function useCanvas(state: State) {
         const { p, msg, color } = actor;
         d.fillStyle = color;
         d.fillRect(p.x - 20, p.y - 20, 40, 40);
-        d.fillText(msg, p.x + 50, p.y);
+        bubble(d, p, msg);
       });
     }
   }, [state]);
