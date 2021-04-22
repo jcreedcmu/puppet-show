@@ -26,8 +26,8 @@ type State = {
 const initState: State = {
   toolState: { t: 'move', s: { t: 'up' } },
   actors: [
-    { color: 'red', msg: 'hello', p: { x: 40, y: 50 } },
-    { color: 'blue', msg: 'world', p: { x: 100, y: 100 } }
+    { color: 'red', msg: '', p: { x: 40, y: 50 } },
+    { color: 'blue', msg: '', p: { x: 100, y: 100 } }
   ]
 };
 
@@ -54,6 +54,9 @@ function relpos<T extends HTMLElement>(event: JSX.TargetedMouseEvent<T>): Point 
 }
 
 function bubble(d: CanvasRenderingContext2D, p: Point, msg: string) {
+  if (msg === undefined || msg === '')
+    return;
+
   const off = { x: 5, y: -25 };
   const thick = 2;
   const save = d.fillStyle;
