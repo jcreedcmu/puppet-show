@@ -1,46 +1,6 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import update from 'immutability-helper';
-import { Spec } from 'immutability-helper';
-
-type Tool = 'move' | 'speech';
-
-const tools: Tool[] = ['move', 'speech'];
-const TOOL_SIZE = { x: 48, y: 48 }; // scaled pixels;
-
-type MoveState =
-  | { t: 'drag', actorIx: number, pt: Point, origPt: Point }
-  | { t: 'up' }
-  | { t: 'down' };
-
-type ToolState =
-  | { t: 'move', s: MoveState }
-  | { t: 'speech' };
-type Point = { x: number, y: number };
-type Actor = { p: Point, msg: string, color: string };
-type State = {
-  toolState: ToolState,
-  actors: Actor[],
-};
-
-const initState: State = {
-  toolState: { t: 'move', s: { t: 'up' } },
-  actors: [
-    { color: 'red', msg: '', p: { x: 40, y: 50 } },
-    { color: 'blue', msg: '', p: { x: 100, y: 100 } }
-  ]
-};
-
-function getActiveTool(state: State): Tool {
-  return state.toolState.t;
-}
-
-function initToolState(tool: Tool): ToolState {
-  switch (tool) {
-    case 'move': return { t: 'move', s: { t: 'up' } };
-    case 'speech': return { t: 'speech' };
-  }
-}
+import { State, Point, Actor, initState, updater, tools, getActiveTool, TOOL_SIZE, initToolState } from './state';
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -128,9 +88,7 @@ export const App = (props: { ws: WebSocket }) => {
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, setState] = useState<State>(initState);
 
-  function upd(spec: Spec<State>) {
-    setState(s => update(s, spec));
-  }
+  const upd = updater(setState);
 
   useWsListener(ws, reduceMsg);
 
