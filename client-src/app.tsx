@@ -3,8 +3,15 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { State, changeMsg, reduceMsg, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg } from '../src/state';
 import { updater } from './updater';
 
+const SCALE = 2;
 const WIDTH = 640;
 const HEIGHT = 480;
+const COLORS = ['red', 'green', 'blue', 'orange', 'purple', 'pink', 'black', 'brown'];
+
+function randItem<T>(xs: T[]): T {
+  return xs[Math.floor(Math.random() * xs.length)];
+}
+
 
 function relpos<T extends HTMLElement>(event: JSX.TargetedMouseEvent<T>): Point {
   const rect = event.currentTarget.getBoundingClientRect();
@@ -19,19 +26,18 @@ function bubble(d: CanvasRenderingContext2D, p: Point, msg: string) {
     return;
 
   const off = { x: 5, y: -25 };
-  const thick = 2;
   const save = d.fillStyle;
   const text_width = msg.length * 6 + 1;
   const text_height = 12;
   const baseline = 9;
-  d.fillRect(p.x + off.x - thick, p.y + off.y - thick, thick * text_width + 2 * thick, thick * text_height + 2 * thick);
+  d.fillRect(p.x + off.x - SCALE, p.y + off.y - SCALE, SCALE * text_width + 2 * SCALE, SCALE * text_height + 2 * SCALE);
   d.fillStyle = 'white';
-  d.fillRect(p.x + off.x, p.y + off.y, thick * text_width, thick * text_height);
+  d.fillRect(p.x + off.x, p.y + off.y, SCALE * text_width, SCALE * text_height);
   d.fillStyle = save;
 
   d.font = "24px CanvasFont";
   d.imageSmoothingEnabled = false;
-  d.fillText(msg, p.x + off.x, p.y + off.y + baseline * thick);
+  d.fillText(msg, p.x + off.x, p.y + off.y + baseline * SCALE);
 }
 
 function useCanvas(state: State) {
@@ -128,14 +134,21 @@ export const App = (props: { ws: WebSocket, initState: State }) => {
 
 
   function changeSpeech(actorIx: number) {
-    const wm: changeMsg = { t: 'setSpeech', actorIx, msg: input };
-    sendWsMsg(ws, wm);
+    sendWsMsg(ws, { t: 'setSpeech', actorIx, msg: input });
   }
 
   function changePos(actorIx: number, p: Point) {
-    const wm: changeMsg = { t: 'setPos', actorIx, p };
-    sendWsMsg(ws, wm);
+    sendWsMsg(ws, { t: 'setPos', actorIx, p });
   }
+
+  function addActor(p: Point, color: string) {
+    sendWsMsg(ws, { t: 'addActor', p, color });
+  }
+
+  function deleteActor(actorIx: number) {
+    sendWsMsg(ws, { t: 'deleteActor', actorIx });
+  }
+
 
   function hitAnd(p: Point, k: (actorIx: number) => void): boolean {
     for (const [ix, actor] of state.actors.entries()) {
@@ -176,7 +189,11 @@ export const App = (props: { ws: WebSocket, initState: State }) => {
         }
         break;
       case 'speech':
-        hitAnd(p, ix => changeSpeech(ix));
+        return hitAnd(p, ix => changeSpeech(ix));
+      case 'add':
+        return addActor(p, randItem(COLORS));
+      case 'delete':
+        return hitAnd(p, ix => deleteActor(ix));
     }
   };
 
@@ -200,7 +217,12 @@ export const App = (props: { ws: WebSocket, initState: State }) => {
             return upd({ toolState: { s: { $set: { t: 'up' } } } });
         }
         break;
+      case 'add':
+        break;
+      case 'delete':
+        break;
       case 'speech':
+        break;
     }
   };
 
@@ -215,10 +237,15 @@ export const App = (props: { ws: WebSocket, initState: State }) => {
     onMouseUp,
     onMouseMove,
   };
+  const backgroundSize = `${TOOL_SIZE.x * 2}px ${TOOL_SIZE.y * tools.length}px`;
   const canvas = <canvas {...canvasProps} />;
   const toolDivs = tools.map((tool, ix) => {
     const active = getActiveTool(state) == tool;
-    const pos: JSX.CSSProperties = { backgroundPositionX: active ? 0 : TOOL_SIZE.x, backgroundPositionY: TOOL_SIZE.y * ix };
+    const pos: JSX.CSSProperties = {
+      backgroundSize,
+      backgroundPositionX: active ? 0 : TOOL_SIZE.x,
+      backgroundPositionY: -TOOL_SIZE.y * ix
+    };
     function onClick() {
       upd({ toolState: { $set: initToolState(tool) } });
     }

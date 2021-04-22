@@ -1,8 +1,8 @@
 import update from 'immutability-helper';
 
-export type Tool = 'move' | 'speech';
+export type Tool = 'move' | 'speech' | 'add' | 'delete';
 
-export const tools: Tool[] = ['move', 'speech'];
+export const tools: Tool[] = ['move', 'speech', 'add', 'delete'];
 export const TOOL_SIZE = { x: 48, y: 48 }; // scaled pixels;
 
 export type MoveState =
@@ -12,7 +12,9 @@ export type MoveState =
 
 export type ToolState =
   | { t: 'move', s: MoveState }
-  | { t: 'speech' };
+  | { t: 'speech' }
+  | { t: 'add' }
+  | { t: 'delete' };
 export type Point = { x: number, y: number };
 export type Actor = { p: Point, msg: string, color: string };
 export type State = {
@@ -36,6 +38,8 @@ export function initToolState(tool: Tool): ToolState {
   switch (tool) {
     case 'move': return { t: 'move', s: { t: 'up' } };
     case 'speech': return { t: 'speech' };
+    case 'add': return { t: 'add' };
+    case 'delete': return { t: 'delete' };
   }
 }
 
@@ -44,7 +48,9 @@ export type InitMsg =
 
 export type changeMsg =
   | { t: 'setSpeech', actorIx: number, msg: string }
-  | { t: 'setPos', actorIx: number, p: Point };
+  | { t: 'setPos', actorIx: number, p: Point }
+  | { t: 'addActor', p: Point, color: string }
+  | { t: 'deleteActor', actorIx: number };
 
 export function reduceMsg(wm: changeMsg, s: State): State {
   switch (wm.t) {
@@ -52,5 +58,9 @@ export function reduceMsg(wm: changeMsg, s: State): State {
       return update(s, { actors: { [wm.actorIx]: { msg: { $set: wm.msg } } } });
     case 'setPos':
       return update(s, { actors: { [wm.actorIx]: { p: { $set: wm.p } } } });
+    case 'addActor':
+      return update(s, { actors: { $push: [{ color: wm.color, p: wm.p, msg: '' }] } });
+    case 'deleteActor':
+      return update(s, { actors: { $splice: [[wm.actorIx, 1]] } });
   }
 }
