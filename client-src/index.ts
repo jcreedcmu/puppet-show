@@ -1,5 +1,4 @@
-
-import { InitMsg } from '../src/state';
+import { InitMsg, NUM_BACKGROUNDS } from '../src/state';
 import { Assets, run } from './app';
 declare const env: 'dev' | 'prod';
 
@@ -64,7 +63,7 @@ async function go() {
   // await delay(50);
   const { s } = JSON.parse(await getOneMessage(ws)) as InitMsg;
   const assets: Assets = { backgrounds: [] }
-  for (const i of [1, 2, 3, 4]) {
+  for (let i = 1; i <= NUM_BACKGROUNDS; i++) {
     assets.backgrounds.push(await getBackground(i));
   }
   run(ws, s, assets);

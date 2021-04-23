@@ -1,6 +1,6 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { State, changeMsg, reduceMsg, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg } from '../src/state';
+import { State, changeMsg, reduceMsg, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg, NUM_BACKGROUNDS } from '../src/state';
 import { updater } from './updater';
 
 const SCALE = 2;
@@ -50,9 +50,11 @@ function useCanvas(state: State, assets: Assets) {
     const canvas = canvasRef.current;
     if (canvas != null) {
       const d = canvas.getContext('2d')!;
-      // d.clearRect(0, 0, WIDTH, HEIGHT);
+      d.clearRect(0, 0, WIDTH, HEIGHT);
       d.imageSmoothingEnabled = false;
-      d.drawImage(assets.backgrounds[0], 0, 0, WIDTH, HEIGHT);
+      if (state.background > 0) {
+        d.drawImage(assets.backgrounds[state.background - 1], 0, 0, WIDTH, HEIGHT);
+      }
       state.actors.forEach(actor => {
         const { p, msg, color } = actor;
         d.fillStyle = color;
@@ -92,7 +94,7 @@ function useWsListener(ws: WebSocket, handler: (msg: changeMsg) => void) {
 
 export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) => {
   const { ws, initState, assets } = props;
-  const [input, setInput] = useState<string>('...');
+  const [input, setInput] = useState<string>('');
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, setState] = useState<State>(initState);
 
@@ -129,7 +131,13 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
         break;
     }
 
-    if (hitAnd(p, ix => setCursor(true))) {
+    if (state.toolState.t == 'add') {
+      setCursor(true)
+    }
+    else if (state.toolState.t == 'bg') {
+      setCursor(false);
+    }
+    else if (hitAnd(p, ix => setCursor(true))) {
       // do nothing else
     }
     else {
@@ -137,6 +145,10 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
     }
   };
 
+
+  function setBg(bg: number) {
+    sendWsMsg(ws, { t: 'setBackground', bg });
+  }
 
   function changeSpeech(actorIx: number) {
     sendWsMsg(ws, { t: 'setSpeech', actorIx, msg: input });
@@ -257,15 +269,29 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
     return <div className="tool" style={pos} onClick={onClick} />
   });
 
-  const div1 = getActiveTool(state) == 'speech' ?
-    <div>
-      <input spellcheck={false} style={style} value={input} onInput={e =>
-        setInput(e.currentTarget.value)} />
-    </div> : <span />;
+  function getBonusPanel(): JSX.Element {
+    switch (getActiveTool(state)) {
+      case 'speech':
+        return <div>
+          <input spellcheck={false} style={style} value={input} onInput={e =>
+            setInput(e.currentTarget.value)} />
+        </div>;
+      case 'bg':
+        const buttons: JSX.Element[] = [];
+        for (let i = 0; i <= NUM_BACKGROUNDS; i++) {
+          buttons.push(<button onClick={() => setBg(i)}>{i}</button>);
+        }
+        return <div>
+          {buttons}
+        </div>;
+      default:
+        return <span />;
+    }
+  }
 
   const toolbar = <div>{toolDivs}</div>
   return <table><tr><td rowSpan={2}>{toolbar}</td><td>{canvas}</td></tr>
-    <tr><td>{div1}</td></tr></table>;
+    <tr><td>{getBonusPanel()}</td></tr></table>;
 }
 
 
