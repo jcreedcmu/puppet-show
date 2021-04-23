@@ -1,6 +1,6 @@
 
 import { InitMsg } from '../src/state';
-import { run } from './app';
+import { Assets, run } from './app';
 declare const env: 'dev' | 'prod';
 
 function openWsTo(host: string): Promise<WebSocket> {
@@ -48,6 +48,14 @@ function delay(ms: number): Promise<void> {
     setTimeout(() => res(), ms);
   });
 }
+
+async function getBackground(i: number): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const img = document.createElement('img');
+    img.src = `/images/background-${i}.png`;
+    img.onload = () => res(img);
+  });
+}
 async function go() {
   document.fonts.add(await (new FontFace('CanvasFont', 'url(/fonts/Nitz.ttf)')).load());
   const ws = await state.ws;
@@ -55,6 +63,10 @@ async function go() {
   //// To reproduce reliably, uncomment:
   // await delay(50);
   const { s } = JSON.parse(await getOneMessage(ws)) as InitMsg;
-  run(ws, s);
+  const assets: Assets = { backgrounds: [] }
+  for (const i of [1, 2, 3, 4]) {
+    assets.backgrounds.push(await getBackground(i));
+  }
+  run(ws, s, assets);
 }
 go();

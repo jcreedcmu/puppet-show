@@ -7,6 +7,10 @@ const SCALE = 2;
 const WIDTH = 640;
 const HEIGHT = 480;
 const COLORS = ['red', 'green', 'blue', 'orange', 'purple', 'pink', 'black', 'brown'];
+export type Assets = {
+  backgrounds: HTMLImageElement[]
+};
+
 
 function randItem<T>(xs: T[]): T {
   return xs[Math.floor(Math.random() * xs.length)];
@@ -40,14 +44,15 @@ function bubble(d: CanvasRenderingContext2D, p: Point, msg: string) {
   d.fillText(msg, p.x + off.x, p.y + off.y + baseline * SCALE);
 }
 
-function useCanvas(state: State) {
+function useCanvas(state: State, assets: Assets) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas != null) {
       const d = canvas.getContext('2d')!;
-      d.clearRect(0, 0, WIDTH, HEIGHT);
-
+      // d.clearRect(0, 0, WIDTH, HEIGHT);
+      d.imageSmoothingEnabled = false;
+      d.drawImage(assets.backgrounds[0], 0, 0, WIDTH, HEIGHT);
       state.actors.forEach(actor => {
         const { p, msg, color } = actor;
         d.fillStyle = color;
@@ -85,8 +90,8 @@ function useWsListener(ws: WebSocket, handler: (msg: changeMsg) => void) {
   });
 }
 
-export const App = (props: { ws: WebSocket, initState: State }) => {
-  const { ws, initState } = props;
+export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) => {
+  const { ws, initState, assets } = props;
   const [input, setInput] = useState<string>('...');
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, setState] = useState<State>(initState);
@@ -104,7 +109,7 @@ export const App = (props: { ws: WebSocket, initState: State }) => {
     fontSize: 24,
     fontFamily: 'courier new',
   };
-  const { canvasRef } = useCanvas(state);
+  const { canvasRef } = useCanvas(state, assets);
 
   const onMouseMove: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
     e.preventDefault();
@@ -263,6 +268,8 @@ export const App = (props: { ws: WebSocket, initState: State }) => {
     <tr><td>{div1}</td></tr></table>;
 }
 
-export function run(ws: WebSocket, s: State) {
-  render(<App ws={ws} initState={s} />, document.getElementById('root')!);
+
+
+export function run(ws: WebSocket, s: State, assets: Assets) {
+  render(<App ws={ws} initState={s} assets={assets} />, document.getElementById('root')!);
 }
