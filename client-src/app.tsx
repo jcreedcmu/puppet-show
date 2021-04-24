@@ -1,7 +1,6 @@
 import { h, render, JSX } from 'preact';
-import { useState, useRef, useEffect } from 'preact/hooks';
-import { State, changeMsg, reduceMsg, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg, NUM_BACKGROUNDS } from '../src/state';
-import { updater } from './updater';
+import { useState, useRef, useEffect, useReducer } from 'preact/hooks';
+import { State, Action, reduce, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg, NUM_BACKGROUNDS, MoveToolAction } from '../src/state';
 
 const SCALE = 2;
 const WIDTH = 640;
@@ -78,13 +77,13 @@ function hitTest(actor: Actor, p: Point) {
 }
 
 
-function sendWsMsg(ws: WebSocket, msg: changeMsg): void {
+function sendWsMsg(ws: WebSocket, msg: Action): void {
   ws.send(JSON.stringify(msg));
 }
 
-function useWsListener(ws: WebSocket, handler: (msg: changeMsg) => void) {
+function useWsListener(ws: WebSocket, handler: (msg: Action) => void) {
   const h = (e: MessageEvent) => {
-    handler(JSON.parse(e.data) as changeMsg);
+    handler(JSON.parse(e.data) as Action);
   };
   useEffect(() => {
     ws.addEventListener('message', h);
@@ -96,13 +95,9 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
   const { ws, initState, assets } = props;
   const [input, setInput] = useState<string>('');
   const [cursor, setCursor] = useState<boolean>(false);
-  const [state, setState] = useState<State>(initState);
+  const [state, dispatch] = useReducer<State, Action>(reduce, initState);
 
-  const upd = updater(setState);
-
-  useWsListener(ws, msg => {
-    setState(s => reduceMsg(msg, s));
-  });
+  useWsListener(ws, dispatch);
 
   const style: JSX.CSSProperties = {
     background: '#def',
@@ -121,7 +116,7 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
       case 'move':
         switch (state.toolState.s.t) {
           case 'drag':
-            return upd({ toolState: { s: { pt: { $set: p } } } });
+            return dispatch({ t: 'moveToolAction', a: { t: 'setPt', p } });
           case 'up':
           case 'down':
             break;
@@ -177,6 +172,8 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
     return false;
   }
 
+  function mdispatch(a: MoveToolAction) { dispatch({ t: 'moveToolAction', a }); }
+
   const onMouseDown: (e: JSX.TargetedMouseEvent<HTMLCanvasElement>) => void = (e) => {
     e.preventDefault();
     const p = relpos(e);
@@ -185,24 +182,17 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
         switch (state.toolState.s.t) {
           case 'up':
             if (hitAnd(p, ix => {
-              upd({
-                toolState: {
-                  s: {
-                    $set:
-                      { t: 'drag', actorIx: ix, origPt: p, pt: p }
-                  }
-                }
-              })
+              mdispatch({ t: 'startDrag', actorIx: ix, p });
             })) {
               return;
             }
             else {
-              return upd({ toolState: { s: { $set: { t: 'down' } } } });
+              return mdispatch({ t: 'down' });
             }
           case 'down':
-            return upd({ toolState: { s: { $set: { t: 'down' } } } }); // XXX
+            return mdispatch({ t: 'down' });
           case 'drag':
-            return upd({ toolState: { s: { $set: { t: 'down' } } } }); // XXX
+            return mdispatch({ t: 'down' });
         }
         break;
       case 'speech':
@@ -221,9 +211,9 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
       case 'move':
         switch (state.toolState.s.t) {
           case 'up':
-            return upd({ toolState: { s: { $set: { t: 'up' } } } });
+            return mdispatch({ t: 'up' });
           case 'down':
-            return upd({ toolState: { s: { $set: { t: 'up' } } } });
+            return mdispatch({ t: 'up' });
           case 'drag':
             const { actorIx, pt, origPt } = state.toolState.s;
             const prev = state.actors[actorIx].p;
@@ -231,7 +221,7 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
               x: prev.x + pt.x - origPt.x,
               y: prev.y + pt.y - origPt.y
             });
-            return upd({ toolState: { s: { $set: { t: 'up' } } } });
+            return mdispatch({ t: 'up' });
         }
         break;
       case 'add':
@@ -264,7 +254,7 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
       backgroundPositionY: -TOOL_SIZE.y * ix
     };
     function onClick() {
-      upd({ toolState: { $set: initToolState(tool) } });
+      return dispatch({ t: 'setTool', tool });
     }
     return <div className="tool" style={pos} onClick={onClick} />
   });
@@ -293,7 +283,6 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
   return <table><tr><td rowSpan={2}>{toolbar}</td><td>{canvas}</td></tr>
     <tr><td>{getBonusPanel()}</td></tr></table>;
 }
-
 
 
 export function run(ws: WebSocket, s: State, assets: Assets) {
