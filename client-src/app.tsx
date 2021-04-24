@@ -1,6 +1,7 @@
 import { h, render, JSX } from 'preact';
 import { useState, useRef, useEffect, useReducer } from 'preact/hooks';
 import { State, Action, reduce, Point, Actor, tools, getActiveTool, TOOL_SIZE, initToolState, InitMsg, NUM_BACKGROUNDS, MoveToolAction } from '../src/state';
+import { WebsocketBufferedSubscribable, WsBundle } from './bws';
 
 const SCALE = 2;
 const WIDTH = 640;
@@ -81,23 +82,24 @@ function sendWsMsg(ws: WebSocket, msg: Action): void {
   ws.send(JSON.stringify(msg));
 }
 
-function useWsListener(ws: WebSocket, handler: (msg: Action) => void) {
+function useWsListener(wbs: WebsocketBufferedSubscribable, handler: (msg: Action) => void) {
   const h = (e: MessageEvent) => {
     handler(JSON.parse(e.data) as Action);
+    return true; // keep subscription around
   };
   useEffect(() => {
-    ws.addEventListener('message', h);
-    return () => ws.removeEventListener('message', h);
+    wbs.sub(h);
+    return () => wbs.unsub(h);
   });
 }
 
-export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) => {
-  const { ws, initState, assets } = props;
+export const App = (props: { b: WsBundle, initState: State, assets: Assets }) => {
+  const { b: { ws, wbs }, initState, assets } = props;
   const [input, setInput] = useState<string>('');
   const [cursor, setCursor] = useState<boolean>(false);
   const [state, dispatch] = useReducer<State, Action>(reduce, initState);
 
-  useWsListener(ws, dispatch);
+  useWsListener(wbs, dispatch);
 
   const style: JSX.CSSProperties = {
     background: '#def',
@@ -285,6 +287,6 @@ export const App = (props: { ws: WebSocket, initState: State, assets: Assets }) 
 }
 
 
-export function run(ws: WebSocket, s: State, assets: Assets) {
-  render(<App ws={ws} initState={s} assets={assets} />, document.getElementById('root')!);
+export function run(b: WsBundle, s: State, assets: Assets) {
+  render(<App b={b} initState={s} assets={assets} />, document.getElementById('root')!);
 }
